@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Animate map camera around a point</title>
+    <meta
+      property="og:description"
+      content="Animate the map camera around a point."
+    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.css"
+    />
+    <script src="https://unpkg.com/maplibre-gl@5.3.0/dist/maplibre-gl.js"></script>
+    <script src="https://loc8.us/maplibre-gl-vector-text-protocol/dist/maplibre-gl-vector-text-protocol.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body,
+      #map {
+        height: 100%;
+      }
+      #debug-hint {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        background-color: #25252593;
+        color: #ffffff;
+        padding: 10px;
+        border-radius: 7px;
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 10px;
+      }
+
+      .coordinates {
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        position: absolute;
+        bottom: 40px;
+        left: 10px;
+        padding: 5px 10px;
+        margin: 0;
+        font-size: 11px;
+        line-height: 18px;
+        border-radius: 3px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="debug-hint">PRESS <b>D</b> KEY TO TOGGLE DEBUG MENU</div>
+    <script type="module" src="src/map.js"></script>
+    <script type="module" src="src/menu.js"></script>
+    <script type="module" src="src/rtirl.js"></script>
+
+    <pre id="coordinates" class="coordinates"></pre>
+  </body>
+</html>
