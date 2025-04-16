@@ -1,4 +1,6 @@
 import { loadRouteGPX, getClosestTrackPointInfo } from "./route";
+import CityLabel from "./cityLabel";
+import { delay } from "./utils";
 
 // Add support for GPX
 VectorTextProtocol.addProtocols(maplibregl);
@@ -6,21 +8,23 @@ VectorTextProtocol.addProtocols(maplibregl);
 const ROUTE_WAYPOINTS_NAME = "ROUTE (GPX)";
 const ROUTE_WAYPOINTS_GPX_URL = "gpx://route.gpx";
 
+const MAPTILER_API_KEY = "uxEQLjImLZS6TTxJxpTU";
+
 export const map = new maplibregl.Map({
   container: "map",
-  style:
-    "https://api.maptiler.com/maps/streets/style.json?key=uxEQLjImLZS6TTxJxpTU",
+  style: `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_API_KEY}`,
   center: [19.65739308407342, 53.10323008206103],
   zoom: 7,
   pitch: 60,
+  canvasContextAttributes: { antialias: true }
 });
 
-function rotateCamera(timestamp) {
-  // clamp the rotation between 0 -360 degrees
-  // Divide timestamp by 100 to slow rotation to ~10 degrees / sec
-  map.rotateTo((timestamp / 500) % 360, { duration: 0 });
-  // Request the next frame of the animation.
-  requestAnimationFrame(rotateCamera);
+export function rotateCamera() {
+  map.rotateTo(180, { duration: 100000 });
+}
+
+export function stopRotateCamera() {
+  pauseRotateCamera = true;
 }
 
 let gpx;
@@ -48,57 +52,63 @@ let currentAnimationPointIndex = 0;
 let resetTime = false; // indicator of whether time reset is needed for the animation
 let isProgressLineRunning = false;
 
+// Route markers
+let activeMarkers = [];
+
+let currentGPSLocation;
+
 map.on("load", async () => {
 
   gpx = await loadRouteGPX();
   console.log(gpx);
 
-  // Add markers for waypoints
-  gpx.waypoints.forEach(waypoint => {
-    const marker = new maplibregl.Marker()
-      .setLngLat([waypoint.longitude, waypoint.latitude])
-      .addTo(map);
-  });
-
-  // Start the animation.
-  rotateCamera(0);
+  addRouteMarkers(gpx);
 
   // Add 3d buildings and remove label layers to enhance the map
   const layers = map.getStyle().layers;
 
-  map.addLayer({
-    id: "3d-buildings",
-    source: "openmaptiles",
-    "source-layer": "building",
-    filter: ["==", "extrude", "true"],
-    type: "fill-extrusion",
-    minzoom: 24,
-    paint: {
-      "fill-extrusion-color": "#aaa",
+  let labelLayerId;
+  for (let i = 0; i < layers.length; i++) {
+    if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+      labelLayerId = layers[i].id;
+      break;
+    }
+  }
 
-      // use an 'interpolate' expression to add a smooth transition effect to the
-      // buildings as the user zooms in
-      "fill-extrusion-height": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        15,
-        0,
-        15.05,
-        ["get", "height"],
-      ],
-      "fill-extrusion-base": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        15,
-        0,
-        15.05,
-        ["get", "min_height"],
-      ],
-      "fill-extrusion-opacity": 0.6,
-    },
+  map.addSource('openmaptiles', {
+    url: `https://api.maptiler.com/tiles/v3/tiles.json?key=${MAPTILER_API_KEY}`,
+    type: 'vector',
   });
+
+  map.addLayer(
+    {
+      'id': '3d-buildings',
+      'source': 'openmaptiles',
+      'source-layer': 'building',
+      'type': 'fill-extrusion',
+      'minzoom': 15,
+      'filter': ['!=', ['get', 'hide_3d'], true],
+      'paint': {
+        'fill-extrusion-color': 'hsl(0, 0%, 6%)',
+        'fill-extrusion-height': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          15,
+          0,
+          16,
+          ['get', 'render_height']
+        ],
+        'fill-extrusion-base': ['case',
+          ['>=', ['get', 'zoom'], 16],
+          ['get', 'render_min_height'], 0
+        ],
+        'fill-extrusion-opacity': 0.7
+      }
+    },
+    labelLayerId
+  );
+
 
   map.addSource(ROUTE_WAYPOINTS_NAME, {
     'type': 'geojson',
@@ -112,9 +122,14 @@ map.on("load", async () => {
     'minzoom': 0,
     'maxzoom': 20,
     "paint": {
-      "line-color": "#888",
-      "line-width": 8,
-    }
+      "line-color": "#AAA",
+      "line-width": 10,
+      'line-opacity': 1,
+    },
+    'layout': {
+      'line-cap': 'round',
+      'line-join': 'round'
+    },
   });
 
   // Animate the route progress line
@@ -136,7 +151,8 @@ export const flyToRouteBounds = () => {
   }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
 
   map.fitBounds(bounds, {
-    padding: 20
+    padding: 30,
+    speed: 0.2
   });
 }
 
@@ -238,6 +254,11 @@ export const addDebugPointerToMap = () => {
 // GPS Location handling
 
 function updateCurrentLocation(longitude, latitude) {
+  currentGPSLocation = {
+    longitude: longitude,
+    latitude: latitude,
+  }
+
   // Find the closest point to GPX path
   closestPointInfo = getClosestTrackPointInfo(gpx, longitude, latitude);
 
@@ -275,7 +296,7 @@ function addAnimatedProgressLine() {
     'paint': {
       'line-color': '#00ff00',
       'line-width': 10,
-      'line-opacity': 1
+      'line-opacity': 1,
     }
   });
 
@@ -306,16 +327,93 @@ function animateLine(timestamp) {
     return;
   }
 
-  // append new coordinates to the lineString
-  const point = gpx.tracks[0].points[currentAnimationPointIndex];
 
-  geojson.features[0].geometry.coordinates.push([point.longitude, point.latitude]);
+  const nextAnimationPointIndex = Math.min(currentAnimationPointIndex + speedFactor, closestPointInfo.index);
+
+  // Append all points between current and next indexes
+  for (let i = currentAnimationPointIndex; i < nextAnimationPointIndex; i++) {
+    const point = gpx.tracks[0].points[i];
+    geojson.features[0].geometry.coordinates.push([point.longitude, point.latitude]);
+  }
+
+  currentAnimationPointIndex = nextAnimationPointIndex;
 
   // then update the map
   map.getSource('line').setData(geojson);
 
-  currentAnimationPointIndex += speedFactor;
+  // Check if any route marker has been reached
+  activeMarkers.forEach(activeMarker => {
+    if (!activeMarker.marker) {
+      return;
+    }
+
+    const currentDistance = gpx.tracks[0].distance.cumulative[currentAnimationPointIndex];
+
+    if (currentDistance >= activeMarker.closestPointInfo.distance && !activeMarker.highlighted) {
+      activeMarker.highlight();
+    }
+  });
 
   // Request the next frame of the animation.
   requestAnimationFrame(animateLine);
+}
+
+async function addRouteMarkers(gpx) {
+  if (activeMarkers.length !== 0) {
+    console.log("Can't add markers, they have to be cleared first!", activeMarkers);
+    return;
+  }
+
+  // Add markers for waypoints
+  for (const waypoint of gpx.waypoints) {
+
+    // Find closest matching point in route points
+    const waypointClosestPointInfo = getClosestTrackPointInfo(gpx, waypoint.longitude, waypoint.latitude);
+
+    // They are custom animated DOM elements
+    const cityLabel = new CityLabel(waypoint, waypointClosestPointInfo);
+
+    // add marker to map
+    const marker = new maplibregl.Marker({ element: cityLabel.element })
+      .setLngLat([waypoint.longitude, waypoint.latitude])
+      .addTo(map);
+
+    cityLabel.setMarker(marker);
+    activeMarkers.push(cityLabel);
+
+    await delay(2000);
+  };
+}
+
+export function clearRouteMarkers() {
+  if (activeMarkers.length === 0) {
+    console.log("There are no route markers to be cleared!");
+    return;
+  }
+
+  for (const activeMarker of activeMarkers) {
+    activeMarker.marker.remove();
+  }
+
+  activeMarkers = [];
+}
+
+// Fly to current GPS location
+
+export function flyToCurrentGPSLocation() {
+  if (!currentGPSLocation) {
+    console.log("Current GPS location not set!");
+    return;
+  }
+
+  map.flyTo({
+    center: [
+      currentGPSLocation.longitude,
+      currentGPSLocation.latitude,
+    ],
+    zoom: 17,
+    speed: 0.3,
+    curve: 1,
+    essential: true
+  });
 }

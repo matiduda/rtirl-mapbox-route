@@ -1,6 +1,6 @@
 import { Pane } from 'tweakpane';
 import { delay } from "./utils";
-import { flyToRouteBounds, addDebugPointerToMap } from "./map";
+import { flyToRouteBounds, addDebugPointerToMap, clearRouteMarkers, flyToCurrentGPSLocation, rotateCamera, stopRotateCamera } from "./map";
 
 const pane = new Pane();
 pane.hidden = true;
@@ -38,6 +38,41 @@ const addDebugPointer = pane.addButton({
 
 addDebugPointer.on('click', () => {
   addDebugPointerToMap();
+});
+
+// Remove route markers
+const removeRouteMarkers = pane.addButton({
+  title: 'Clear route markers',
+});
+
+removeRouteMarkers.on('click', () => {
+  clearRouteMarkers();
+});
+
+// Remove route markers
+const flyToCurrentLocation = pane.addButton({
+  title: 'Fly to current location',
+});
+
+flyToCurrentLocation.on('click', () => {
+  flyToCurrentGPSLocation();
+});
+
+// Start / stop camera rotation
+const startCameraRotation = pane.addButton({
+  title: 'Start camera rotation',
+});
+
+startCameraRotation.on('click', () => {
+  rotateCamera(0);
+});
+
+const stopCameraRotation = pane.addButton({
+  title: 'Stop camera rotation',
+});
+
+stopCameraRotation.on('click', () => {
+  stopRotateCamera();
 });
 
 // Show / hide debug menu
