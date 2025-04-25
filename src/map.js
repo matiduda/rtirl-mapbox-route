@@ -20,7 +20,7 @@ export const map = new maplibregl.Map({
 });
 
 export function rotateCamera() {
-  map.rotateTo(180, { duration: 100000 });
+  map.rotateTo(180, { duration: 100000, essential: true });
 }
 
 export function stopRotateCamera() {
@@ -152,7 +152,8 @@ export const flyToRouteBounds = () => {
 
   map.fitBounds(bounds, {
     padding: 30,
-    speed: 0.2
+    speed: 0.2,
+    essential: true,
   });
 }
 
