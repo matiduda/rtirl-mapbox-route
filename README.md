@@ -9,6 +9,4 @@ How to use:
 
 Boom, the map data should be updated!
 
-This code is under _active_ development so
-
-IT IS BETTER TO LOOK ELSEWHERE I PROMISE
+Code is very ugly but works ok
