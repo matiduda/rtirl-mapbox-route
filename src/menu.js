@@ -81,11 +81,3 @@ document.addEventListener('keydown', (event) => {
     pane.hidden = !pane.hidden;
   }
 });
-
-delay(3000).then(() => {
-  const debugHint = document.getElementById('debug-hint');
-  const fadeOffSeconds = 1;
-  debugHint.style.transition = `${fadeOffSeconds}s`;
-  debugHint.style.opacity = 0;
-  delay(fadeOffSeconds * 1000).then(() => debugHint.remove());
-});

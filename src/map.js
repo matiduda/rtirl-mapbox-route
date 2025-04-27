@@ -1,5 +1,6 @@
 import { loadRouteGPX, getClosestTrackPointInfo } from "./route";
 import CityLabel from "./cityLabel";
+import GPSLabel from "./gpsLabel";
 import { delay } from "./utils";
 
 // Add support for GPX
@@ -15,12 +16,17 @@ export const map = new maplibregl.Map({
   style: `https://api.maptiler.com/maps/dataviz-dark/style.json?key=${MAPTILER_API_KEY}`,
   center: [19.65739308407342, 53.10323008206103],
   zoom: 7,
-  pitch: 60,
+  pitch: 0,
+  bearing: -10,
   canvasContextAttributes: { antialias: true }
 });
 
+export function resetCamera() {
+  map.rotateTo(0, { duration: 50000, essential: true });
+}
+
 export function rotateCamera() {
-  map.rotateTo(180, { duration: 100000, essential: true });
+  map.rotateTo(100, { duration: 50000, essential: true });
 }
 
 export function stopRotateCamera() {
@@ -56,13 +62,17 @@ let isProgressLineRunning = false;
 let activeMarkers = [];
 
 let currentGPSLocation;
+let currentRTIRLLocation;
+let currentlyAnimatedRTIRLLocation;
+let gpsPointerInitialized = false;
+let currentGPSLabel;
 
 map.on("load", async () => {
 
   gpx = await loadRouteGPX();
   console.log(gpx);
 
-  addRouteMarkers(gpx);
+  // addRouteMarkers(gpx);
 
   // Add 3d buildings and remove label layers to enhance the map
   const layers = map.getStyle().layers;
@@ -132,11 +142,12 @@ map.on("load", async () => {
     },
   });
 
-  // Animate the route progress line
   addAnimatedProgressLine();
+  flyToRouteBounds();
+  initializeInfiniteAnimation();
 });
 
-export const flyToRouteBounds = () => {
+export const flyToRouteBounds = (speed = 0.2, essential = true) => {
   // Geographic coordinates of the LineString
   const geojson = gpx.toGeoJSON();
   const coordinates = geojson.features[0].geometry.coordinates;
@@ -152,8 +163,10 @@ export const flyToRouteBounds = () => {
 
   map.fitBounds(bounds, {
     padding: 30,
-    speed: 0.2,
-    essential: true,
+    speed: speed,
+    pitch: 60,
+    bearing: 20,
+    essential: essential,
   });
 }
 
@@ -252,6 +265,139 @@ export const addDebugPointerToMap = () => {
   });
 }
 
+// Current location marker
+
+const size = 100;
+
+// implementation of StyleImageInterface to draw a pulsing dot icon on the map
+// Search for StyleImageInterface in https://maplibre.org/maplibre-gl-js/docs/API/
+const pulsingDot = {
+  width: size,
+  height: size,
+  data: new Uint8Array(size * size * 4),
+
+  // get rendering context for the map canvas when layer is added to the map
+  onAdd() {
+    const canvas = document.createElement('canvas');
+    canvas.width = this.width;
+    canvas.height = this.height;
+    this.context = canvas.getContext('2d');
+  },
+
+  // called once before every frame where the icon will be used
+  render() {
+    const duration = 2000;
+    const t = (performance.now() % duration) / duration;
+
+    const radius = (size / 2) * 0.3;
+    const outerRadius = (size / 2) * 0.7 * t + radius;
+    const context = this.context;
+
+    // draw outer circle
+    context.clearRect(0, 0, this.width, this.height);
+    context.beginPath();
+    context.arc(
+      this.width / 2,
+      this.height / 2,
+      outerRadius,
+      0,
+      Math.PI * 2
+    );
+    context.fillStyle = `rgba(255, 200, 200,${1 - t})`;
+    context.fill();
+
+    // draw inner circle
+    context.beginPath();
+    context.arc(
+      this.width / 2,
+      this.height / 2,
+      radius,
+      0,
+      Math.PI * 2
+    );
+    context.fillStyle = 'rgba(255, 100, 100, 1)';
+    context.strokeStyle = 'white';
+    context.lineWidth = 2 + 4 * (1 - t);
+    context.fill();
+    context.stroke();
+
+    // update this image's data with data from the canvas
+    this.data = context.getImageData(
+      0,
+      0,
+      this.width,
+      this.height
+    ).data;
+
+    // continuously repaint the map, resulting in the smooth animation of the dot
+    map.triggerRepaint();
+
+    // return `true` to let the map know that the image was updated
+    return true;
+  }
+};
+
+export const addCurrentLocationPointerToMap = () => {
+  // Add a single point to the map
+
+  map.addImage('pulsing-dot', pulsingDot, { pixelRatio: 2 });
+
+  map.addSource('points', {
+    'type': 'geojson',
+    'data': {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'geometry': {
+            'type': 'Point',
+            'coordinates': [currentlyAnimatedRTIRLLocation.longitude, currentlyAnimatedRTIRLLocation.latitude]
+          }
+        }
+      ]
+    }
+  });
+  map.addLayer({
+    'id': 'points',
+    'type': 'symbol',
+    'source': 'points',
+    'layout': {
+      'icon-image': 'pulsing-dot'
+    }
+  });
+
+  // add label to map
+  currentGPSLabel = new GPSLabel(currentlyAnimatedRTIRLLocation);
+
+  const gpsLabelMarker = new maplibregl.Marker({ element: currentGPSLabel.element });
+
+  gpsLabelMarker
+    .setLngLat([currentlyAnimatedRTIRLLocation.longitude, currentlyAnimatedRTIRLLocation.latitude])
+    .addTo(map);
+
+  currentGPSLabel.setMarker(gpsLabelMarker);
+}
+
+function updateCurrentLocationPointer() {
+  const geojson = {
+    'type': 'FeatureCollection',
+    'features': [
+      {
+        'type': 'Feature',
+        'geometry': {
+          'type': 'Point',
+          'coordinates': [currentlyAnimatedRTIRLLocation.longitude, currentlyAnimatedRTIRLLocation.latitude]
+        }
+      }
+    ]
+  };
+
+  map.getSource('points').setData(geojson);
+
+  currentGPSLabel.marker
+    .setLngLat([currentlyAnimatedRTIRLLocation.longitude, currentlyAnimatedRTIRLLocation.latitude])
+}
+
 // GPS Location handling
 
 function updateCurrentLocation(longitude, latitude) {
@@ -264,11 +410,11 @@ function updateCurrentLocation(longitude, latitude) {
   closestPointInfo = getClosestTrackPointInfo(gpx, longitude, latitude);
 
   if (!closestPointMarker) {
-    closestPointMarker = new maplibregl.Marker({
-      color: "#FF0000",
-    })
+    // add marker to map
+    closestPointMarker = new maplibregl.Marker({})
+
+    closestPointMarker
       .setLngLat([closestPointInfo.point.longitude, closestPointInfo.point.latitude])
-      .addTo(map);
   }
 
   closestPointMarker.setLngLat([closestPointInfo.point.longitude, closestPointInfo.point.latitude]);
@@ -276,7 +422,6 @@ function updateCurrentLocation(longitude, latitude) {
 
   animateLine();
 }
-
 
 // Animated progress line
 function addAnimatedProgressLine() {
@@ -402,19 +547,87 @@ export function clearRouteMarkers() {
 // Fly to current GPS location
 
 export function flyToCurrentGPSLocation() {
-  if (!currentGPSLocation) {
-    console.log("Current GPS location not set!");
+  if (!currentlyAnimatedRTIRLLocation) {
+    console.log("[flyToCurrentGPSLocation] currentlyAnimatedRTIRLLocation location not set!");
     return;
   }
 
   map.flyTo({
     center: [
-      currentGPSLocation.longitude,
-      currentGPSLocation.latitude,
+      currentlyAnimatedRTIRLLocation.longitude,
+      currentlyAnimatedRTIRLLocation.latitude,
     ],
     zoom: 17,
+    pitch: 40,
     speed: 0.3,
     curve: 1,
     essential: true
   });
+}
+
+async function initializeInfiniteAnimation() {
+  // Wait for the loading animation to complete
+  await delay(4_000);
+
+  // Remove loading div
+  const loadingDiv = document.getElementById('loading');
+  loadingDiv.remove();
+
+  startInfiniteAnimation()
+}
+
+async function startInfiniteAnimation() {
+  rotateCamera();
+  addRouteMarkers(gpx);
+
+  // Wait for route marker animation to progress
+  await delay(7000);
+
+  if (currentRTIRLLocation) {
+    console.log("[startInfiniteAnimation] Most recent GPS location: ", currentRTIRLLocation);
+    currentlyAnimatedRTIRLLocation = { ...currentRTIRLLocation };
+
+    if (!gpsPointerInitialized) {
+      addCurrentLocationPointerToMap();
+      gpsPointerInitialized = true;
+    } else {
+      updateCurrentLocationPointer();
+    }
+
+    updateCurrentLocation(currentlyAnimatedRTIRLLocation.longitude, currentlyAnimatedRTIRLLocation.latitude);
+
+    // Wait for map rotation
+    await delay(10_000);
+
+    flyToCurrentGPSLocation();
+
+    // Wait for the fly to complete
+    await delay(25_000);
+
+    rotateCamera();
+
+    await delay(10_000);
+
+    clearRouteMarkers();
+    flyToRouteBounds();
+
+    await delay(20_000);
+  } else {
+    console.log("[startInfiniteAnimation] No current GPS location!");
+    const warn = document.getElementById('no_gps_warn');
+    warn.style.opacity = 1;
+    await delay(20_000);
+    resetCamera()
+    await delay(30_000);
+    warn.style.opacity = 0;
+    clearRouteMarkers();
+    await delay(2_000);
+    flyToRouteBounds();
+  }
+
+  startInfiniteAnimation();
+}
+
+export function upadteRTIRLLocation(location) {
+  currentRTIRLLocation = location;
 }

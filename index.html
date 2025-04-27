@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Animate map camera around a point</title>
+    <title>WARSZAWA - GDANSK 2025</title>
     <meta
       property="og:description"
-      content="Animate the map camera around a point."
+      content="WARSZAWA - GDANSK 2025"
     />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -24,16 +24,159 @@
       #map {
         height: 100%;
       }
-      #debug-hint {
-        position: absolute;
-        bottom: 0;
+
+      #loading {
+        width: 100vw;
+        height: 100vh;
+        background: #000000;
+        position: fixed;
+        top: 0;
         left: 0;
-        background-color: #25252593;
-        color: #ffffff;
-        padding: 10px;
-        border-radius: 7px;
-        font-family: Arial, Helvetica, sans-serif;
-        margin: 10px;
+        z-index: 10;
+        transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        animation-duration: 1s;
+        animation-delay: 3s;
+        animation-name: loading-hide;
+        animation-fill-mode: forwards;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      @keyframes loading-hide {
+        from {
+          opacity: 1;
+        }
+
+        to {
+          opacity: 0;
+        }
+      }
+
+      #logo {
+        height: 150px;
+        transition: all 0.6s cubic-bezier(0.1, 0.5, 0.56, 1);
+        animation-duration: 1s;
+        animation-name: logo-in;
+        animation-fill-mode: forwards;
+      }
+
+      @keyframes logo-in {
+        from {
+          scale: 0.75;
+          transform: rotate(10deg);
+          opacity: 0;
+        }
+
+        to {
+          scale: 1;
+          transform: rotate(0deg);
+          opacity: 1;
+        }
+      }
+
+      .loader {
+        height: 5px;
+        width: 5px;
+        color: #fff;
+        box-shadow: -10px -10px 0 5px,
+                    -10px -10px 0 5px,
+                    -10px -10px 0 5px,
+                    -10px -10px 0 5px;
+        animation: loader-38 6s infinite;
+        position: fixed;
+        top: 75vh;
+      }
+
+      @keyframes loader-38 {
+        0% {
+          box-shadow: -10px -10px 0 5px,
+                      -10px -10px 0 5px,
+                      -10px -10px 0 5px,
+                      -10px -10px 0 5px;
+        }
+        8.33% {
+          box-shadow: -10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px -10px 0 5px;
+        }
+        16.66% {
+          box-shadow: -10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      10px 10px 0 5px;
+        }
+        24.99% {
+          box-shadow: -10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        33.32% {
+          box-shadow: -10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px -10px 0 5px;
+        }
+        41.65% {
+          box-shadow: 10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      10px -10px 0 5px;
+        }
+        49.98% {
+          box-shadow: 10px 10px 0 5px,
+                    10px 10px 0 5px,
+                    10px 10px 0 5px,
+                    10px 10px 0 5px;
+        }
+        58.31% {
+          box-shadow: -10px 10px 0 5px,
+                      -10px 10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        66.64% {
+          box-shadow: -10px -10px 0 5px,
+                      -10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        74.97% {
+          box-shadow: -10px -10px 0 5px,
+                      10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        83.3% {
+          box-shadow: -10px -10px 0 5px,
+                      10px 10px 0 5px,
+                      10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        91.63% {
+          box-shadow: -10px -10px 0 5px,
+                      -10px 10px 0 5px,
+                      -10px 10px 0 5px,
+                      -10px 10px 0 5px;
+        }
+        100% {
+          box-shadow: -10px -10px 0 5px,
+                      -10px -10px 0 5px,
+                      -10px -10px 0 5px,
+                      -10px -10px 0 5px;
+        }
+      }
+
+      #no_gps_warn {
+        height: 120px;
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.6s cubic-bezier(0.1, 0.5, 0.56, 1);
       }
 
       .coordinates {
@@ -49,6 +192,8 @@
         border-radius: 3px;
         display: none;
       }
+
+      /* WAYPOINT LABELS */
 
       .city-label-wrapper {
         height: 0;
@@ -121,7 +266,7 @@
         color: #0f0f0f;
         font-size: 25px;
         opacity: 0;
-
+        font-weight: bold;
         transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
         animation-duration: 2s;
         animation-delay: 1.5s;
@@ -145,15 +290,119 @@
           translate: 0px 0px;
         }
       }
+
+      /* GPS LABEL */
+
+      .gps-label-wrapper {
+        height: 0;
+        width: 0;
+        position: relative;
+      }
+
+      .gps-label-pointer {
+        width: 0;
+        height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-top: 10px solid rgba(255, 100, 100, 1);
+        transform: translate(-10px, -20px) rotate(180deg);
+        visibility: hidden;
+
+        transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        animation-duration: 1s;
+        animation-delay: 1s;
+        animation-name: gps-label-pointer-in;
+        animation-fill-mode: forwards;
+      }
+
+      .gps-label-pointer-highlighted {
+        transition: border-top-color 0.5s ease;
+        border-top-color: rgb(141, 23, 23);
+      }
+
+      @keyframes gps-label-pointer-in {
+        from {
+          visibility: visible;
+          translate: 0px 60px;
+        }
+
+        to {
+          visibility: visible;
+          translate: 0px 36px;
+        }
+      }
+
+      .gps-label-background {
+        background-color: rgba(255, 100, 100, 1);
+        padding: 15px 0px;
+        position: absolute;
+        top: 25px;
+        transform: translateX(-50%);
+        overflow: hidden;
+        transition: all 0.6s cubic-bezier(0.87, 0, 0.13, 1);
+        animation-duration: 2s;
+        animation-name: gps-label-background-in;
+      }
+
+      .gps-label-background-highlighted {
+        transition: all 0.5s ease;
+        background-color: #0bda51;
+      }
+
+      @keyframes gps-label-background-in {
+        from {
+          scale: 0% 1;
+        }
+
+        to {
+          scale: 100% 1;
+        }
+      }
+
+      .gps-label-text {
+        color: #ffffff;
+        font-size: 17px;
+        opacity: 0;
+        width: 160px;
+        text-align: center;
+        font-weight: bold;
+        transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        animation-duration: 2s;
+        animation-delay: 1.5s;
+        animation-name: gps-label-text-in;
+        animation-fill-mode: forwards;
+      }
+
+      .gps-label-text-highlighted {
+        transition: color 0.1s ease;
+        color: rgb(255, 255, 255);
+      }
+
+      @keyframes gps-label-text-in {
+        from {
+          opacity: 1;
+          translate: 0px -50px;
+        }
+
+        to {
+          opacity: 1;
+          translate: 0px 0px;
+        }
+      }
+
+
     </style>
   </head>
   <body>
     <div id="map"></div>
-    <div id="debug-hint">PRESS <b>D</b> KEY TO TOGGLE DEBUG MENU</div>
+    <div id="loading">
+      <img id="logo" src="wa_gd_2025.png" />
+      <span class="loader"></span>
+    </div>
+    <img src="no_location_warning.png" id="no_gps_warn"/>
     <script type="module" src="src/map.js"></script>
     <script type="module" src="src/menu.js"></script>
     <script type="module" src="src/rtirl.js"></script>
-
     <pre id="coordinates" class="coordinates"></pre>
   </body>
 </html>
