@@ -1,3 +1,5 @@
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/Cn2IgZ0z9U4/0.jpg)](https://www.youtube.com/watch?v=Cn2IgZ0z9U4)
+
 How to use:
 
 1. Define a map with waypoints using (Google Maps)[https://maps.google.com/]
