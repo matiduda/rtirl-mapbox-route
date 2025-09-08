@@ -10,3 +10,13 @@ How to use:
 Boom, the map data should be updated!
 
 Code is very ugly but works ok
+
+TODO v2:
+- [ ] Live distance calculation & completion percentege
+- [ ] Show enrite country when zoomed out
+- [ ] Keep the sharp corner design
+- [ ] Switch to light mode - dark map does not compress well when streaming
+- [ ] More creative panning? Mabye like 5 variants - left, right, zoom in, zoom out, etc.
+- [ ] Remove MapLibre box
+- [ ] Display fun random messages (concept with avatars & random quotes, smth like maxis loading screens)
+- [ ] Display amount of money gathered on map view too
