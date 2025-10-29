@@ -20,3 +20,4 @@ TODO v2:
 - [ ] Remove MapLibre box
 - [ ] Display fun random messages (concept with avatars & random quotes, smth like maxis loading screens)
 - [ ] Display amount of money gathered on map view too
+- [ ] Simple sound effects for animations
